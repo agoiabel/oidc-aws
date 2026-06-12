@@ -1,0 +1,5 @@
+aws_region     = "eu-west-1"
+github_org     = "YOUR_ORG"
+github_repo    = "YOUR_REPO"
+github_branch  = "main"
+s3_bucket_name = "YOUR_BUCKET"

@@ -1,0 +1,62 @@
+name: AWS OIDC authentication test
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:   # allows manual trigger from GitHub UI
+
+# ──────────────────────────────────────────────────────────────
+# This is the critical permission block.
+# id-token: write  → tells GitHub to mint an OIDC JWT for this run
+# contents: read   → allows checking out the repo
+# Without id-token: write the workflow cannot request a token
+# and the assume-role step will fail with "credentials not found"
+# ──────────────────────────────────────────────────────────────
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  authenticate-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ────────────────────────────────────────────────────────
+      # configure-aws-credentials does everything in one step:
+      #   1. Calls GitHub's OIDC endpoint to get a JWT
+      #   2. Calls sts:AssumeRoleWithWebIdentity with that JWT
+      #   3. Exports AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY,
+      #      AWS_SESSION_TOKEN as environment variables
+      #   4. All subsequent AWS CLI / SDK calls use these vars
+      # ────────────────────────────────────────────────────────
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          # Paste the role_arn from terraform output here
+          role-to-assume: arn:aws:iam::123456789012:role/github-actions-oidc-YOUR_REPO
+          aws-region: eu-west-1
+
+          # Optional: give the session a meaningful name for CloudTrail
+          role-session-name: github-actions-${{ github.run_id }}
+
+      # ────────────────────────────────────────────────────────
+      # From here, you ARE the IAM role. Any AWS CLI command
+      # works within the permissions the role grants.
+      # ────────────────────────────────────────────────────────
+      - name: Verify identity
+        run: aws sts get-caller-identity
+
+      - name: List S3 buckets
+        run: aws s3 ls
+
+      - name: Show the OIDC token claims (debugging tool)
+        run: |
+          # Decode just the payload of the JWT for inspection
+          # (safe to print — the token is already consumed by STS)
+          TOKEN=$(curl -sH "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | jq -r '.value')
+          echo "=== JWT Claims ==="
+          echo $TOKEN | cut -d'.' -f2 | base64 -d 2>/dev/null | jq .

@@ -1,0 +1,11 @@
+# Terraform variable values — may contain secrets
+terraform.tfvars
+*.tfvars
+!*.tfvars.example
+
+# Terraform state and cache
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+.terraform.lock.hcl
