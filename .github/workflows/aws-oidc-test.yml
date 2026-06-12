@@ -36,7 +36,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           # Paste the role_arn from terraform output here
-          role-to-assume: arn:aws:iam::123456789012:role/github-actions-oidc-YOUR_REPO
+          role-to-assume: arn:aws:iam::974842794124:role/github-actions-oidc-aws
           aws-region: eu-west-1
 
           # Optional: give the session a meaningful name for CloudTrail
